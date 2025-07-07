@@ -1,7 +1,7 @@
 import os
 import logging
 import traceback
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from improved_chatbot import ImprovedChatbot
 
@@ -95,6 +95,11 @@ def health_check():
         "status": "healthy",
         "service": "Hautlabor Chatbot API"
     })
+
+@app.route('/')
+def index():
+    """Serve the main HTML file"""
+    return send_from_directory('.', 'index.html')
 
 @app.errorhandler(404)
 def not_found(e):
