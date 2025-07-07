@@ -194,9 +194,15 @@ class ImprovedChatbot:
     def create_chain(self):
         """Create conversational chain with memory"""
 
-        # Improved prompt template
-        custom_prompt = PromptTemplate(
-            template="""Du bist der AI-Assistent von Dr. med. Lara Pfahl für das Hautlabor Oldenburg.
+        # Load system prompt from external file
+        try:
+            with open('system_prompt.txt', 'r', encoding='utf-8') as f:
+                prompt_template = f.read().strip()
+            self.logger.info("System prompt loaded from system_prompt.txt")
+        except FileNotFoundError:
+            self.logger.warning("system_prompt.txt not found, using default prompt")
+            # Fallback to default prompt
+            prompt_template = """Du bist der AI-Assistent von Dr. med. Lara Pfahl für das Hautlabor Oldenburg.
 
 Verwende den folgenden Kontext und die Gesprächshistorie, um die Frage zu beantworten:
 
@@ -213,7 +219,14 @@ Anweisungen:
 - Sei freundlich und professionell
 - Halte Antworten fokussiert (max. 3-4 Sätze)
 
-Antwort:""",
+Antwort:"""
+        except Exception as e:
+            self.logger.error(f"Error loading system prompt: {str(e)}")
+            raise
+
+        # Create prompt template
+        custom_prompt = PromptTemplate(
+            template=prompt_template,
             input_variables=["context", "chat_history", "question"]
         )
 
