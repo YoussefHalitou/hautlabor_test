@@ -1,9 +1,15 @@
 import os
 import logging
 import traceback
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, url_for
 from flask_cors import CORS
 from improved_chatbot import ImprovedChatbot
+import os
+import logging
+import openai
+from werkzeug.utils import secure_filename
+from PIL import Image
+import io
 
 # Configure logging
 logging.basicConfig(
@@ -24,6 +30,21 @@ API_KEY = os.getenv('OPENAI_API_KEY')
 if not API_KEY:
     raise ValueError("OPENAI_API_KEY environment variable is required")
 
+# Configure OpenAI client
+openai.api_key = API_KEY
+
+# Create upload directory
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+
+# Create upload directory if it doesn't exist
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 try:
     logger.info("Initializing chatbot")
     chatbot = ImprovedChatbot(API_KEY)
@@ -32,6 +53,88 @@ except Exception as e:
     logger.error(f"Failed to initialize chatbot: {str(e)}")
     logger.error(traceback.format_exc())
     raise
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def analyze_skin_image(image_path):
+    """Analyze skin condition using OpenAI Vision API"""
+    try:
+        # Read and encode image
+        with open(image_path, "rb") as image_file:
+            import base64
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # Create a specialized prompt for skin analysis
+        analysis_prompt = """
+        Du bist ein erfahrener Dermatologe und ästhetischer Mediziner. Analysiere dieses Hautbild und gib eine professionelle Einschätzung.
+        
+        Bitte bewerte folgende Aspekte:
+        1. Hauttyp und -zustand
+        2. Sichtbare Hautprobleme (Falten, Pigmentflecken, Unreinheiten, etc.)
+        3. Altersbedingte Veränderungen
+        4. Hautqualität (Elastizität, Feuchtigkeit, Textur)
+        
+        Empfehle passende Behandlungen aus dieser Liste:
+        - CO₂-Laser (Hauterneuerung, Faltenreduktion)
+        - Botox (Mimikfalten)
+        - Hyaluronsäure-Filler (Volumenaufbau, Faltenglättung)
+        - HydraFacial (Tiefenreinigung, Hydratation)
+        - LaseMD (Hautverbesserung)
+        - Lumecca IPL (Pigmentflecken, Rötungen)
+        - Morpheus8 (Microneedling + RF)
+        - Polynukleotide (Hautregeneration)
+        - Radiesse (Kollagenstimulation)
+        - Sculptra (Volumenaufbau)
+        - SkinPen Microneedling
+        - Skinbooster (Hautfeuchtigkeit)
+        - Ultherapy (Ultraschall-Lifting)
+        - PRP Vampirlifting (Eigenbluttherapie)
+        
+        Gib eine strukturierte Antwort auf Deutsch mit:
+        1. Hautanalyse (2-3 Sätze)
+        2. Hauptprobleme identifiziert
+        3. Top 3 empfohlene Behandlungen mit Begründung
+        4. Zusätzliche Pflegetipps
+        
+        Wichtig: Betone, dass dies eine erste Einschätzung ist und eine persönliche Beratung für eine genaue Diagnose erforderlich ist.
+        """
+        
+        # Call OpenAI Vision API
+        from openai import OpenAI
+        client = OpenAI(api_key=API_KEY)
+        
+        response = client.chat.completions.create(
+            model="gpt-4-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": analysis_prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}",
+                                "detail": "high"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=1000,
+            temperature=0.1
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        logger.error(f"Error analyzing image: {str(e)}")
+        return "Entschuldigung, ich konnte das Bild nicht analysieren. Bitte versuchen Sie es erneut oder kontaktieren Sie uns für eine persönliche Beratung."
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
@@ -86,6 +189,85 @@ def reset():
         return jsonify({
             "status": "error",
             "error": error_msg
+        }), 500
+
+@app.route('/api/analyze-image', methods=['POST'])
+def analyze_image():
+    """Analyze uploaded skin image"""
+    try:
+        logger.info("Received image analysis request")
+        
+        # Check if file is present
+        if 'image' not in request.files:
+            logger.warning("No image file in request")
+            return jsonify({"error": "No image file provided"}), 400
+        
+        file = request.files['image']
+        
+        # Check if file is selected
+        if file.filename == '':
+            logger.warning("No file selected")
+            return jsonify({"error": "No file selected"}), 400
+        
+        # Check file type
+        if not allowed_file(file.filename):
+            logger.warning(f"Invalid file type: {file.filename}")
+            return jsonify({"error": "Invalid file type. Please upload PNG, JPG, JPEG, GIF, BMP, or WEBP files."}), 400
+        
+        # Save file
+        filename = secure_filename(file.filename)
+        # Add timestamp to avoid conflicts
+        import time
+        timestamp = str(int(time.time()))
+        filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Validate and resize image
+        try:
+            # Open image to validate it
+            img = Image.open(file.stream)
+            
+            # Convert to RGB if necessary
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+            
+            # Resize if too large (max 1024x1024 for better processing)
+            max_size = (1024, 1024)
+            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            
+            # Save the processed image
+            img.save(filepath, 'JPEG', quality=85)
+            logger.info(f"Image saved successfully: {filepath}")
+            
+        except Exception as e:
+            logger.error(f"Error processing image: {str(e)}")
+            return jsonify({"error": "Invalid image file"}), 400
+        
+        # Analyze the image
+        logger.info("Starting image analysis")
+        analysis_result = analyze_skin_image(filepath)
+        
+        # Clean up: remove the uploaded file
+        try:
+            os.remove(filepath)
+            logger.info("Temporary image file cleaned up")
+        except Exception as e:
+            logger.warning(f"Could not remove temporary file: {str(e)}")
+        
+        logger.info("Image analysis completed successfully")
+        return jsonify({
+            "message": analysis_result,
+            "status": "success",
+            "type": "image_analysis"
+        })
+        
+    except Exception as e:
+        error_msg = f"Error analyzing image: {str(e)}"
+        logger.error(error_msg)
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "error": error_msg,
+            "status": "error"
         }), 500
 
 @app.route('/api/health', methods=['GET'])
