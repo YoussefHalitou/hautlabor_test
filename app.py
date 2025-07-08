@@ -62,52 +62,47 @@ def allowed_file(filename):
 def analyze_skin_image(image_path):
     """Analyze skin condition using OpenAI Vision API"""
     try:
+        logger.info(f"Starting image analysis for: {image_path}")
+        
+        # Check if file exists
+        if not os.path.exists(image_path):
+            logger.error(f"Image file not found: {image_path}")
+            return "Bild konnte nicht gefunden werden."
+        
         # Read and encode image
         with open(image_path, "rb") as image_file:
             import base64
             base64_image = base64.b64encode(image_file.read()).decode('utf-8')
         
+        logger.info(f"Image encoded successfully, size: {len(base64_image)} chars")
+        
         # Create a specialized prompt for skin analysis
-        analysis_prompt = """
-        Du bist ein erfahrener Dermatologe und ästhetischer Mediziner. Analysiere dieses Hautbild und gib eine professionelle Einschätzung.
-        
-        Bitte bewerte folgende Aspekte:
-        1. Hauttyp und -zustand
-        2. Sichtbare Hautprobleme (Falten, Pigmentflecken, Unreinheiten, etc.)
-        3. Altersbedingte Veränderungen
-        4. Hautqualität (Elastizität, Feuchtigkeit, Textur)
-        
-        Empfehle passende Behandlungen aus dieser Liste:
-        - CO₂-Laser (Hauterneuerung, Faltenreduktion)
-        - Botox (Mimikfalten)
-        - Hyaluronsäure-Filler (Volumenaufbau, Faltenglättung)
-        - HydraFacial (Tiefenreinigung, Hydratation)
-        - LaseMD (Hautverbesserung)
-        - Lumecca IPL (Pigmentflecken, Rötungen)
-        - Morpheus8 (Microneedling + RF)
-        - Polynukleotide (Hautregeneration)
-        - Radiesse (Kollagenstimulation)
-        - Sculptra (Volumenaufbau)
-        - SkinPen Microneedling
-        - Skinbooster (Hautfeuchtigkeit)
-        - Ultherapy (Ultraschall-Lifting)
-        - PRP Vampirlifting (Eigenbluttherapie)
-        
-        Gib eine strukturierte Antwort auf Deutsch mit:
-        1. Hautanalyse (2-3 Sätze)
-        2. Hauptprobleme identifiziert
-        3. Top 3 empfohlene Behandlungen mit Begründung
-        4. Zusätzliche Pflegetipps
-        
-        Wichtig: Betone, dass dies eine erste Einschätzung ist und eine persönliche Beratung für eine genaue Diagnose erforderlich ist.
-        """
+        analysis_prompt = """Du bist ein erfahrener Dermatologe. Analysiere dieses Hautbild professionell.
+
+Bewerte:
+1. Hauttyp und -zustand
+2. Sichtbare Probleme (Falten, Pigmentflecken, etc.)
+3. Altersbedingte Veränderungen
+
+Empfehle 2-3 passende Behandlungen:
+- CO₂-Laser, Botox, Hyaluronsäure-Filler
+- HydraFacial, LaseMD, Lumecca IPL
+- Morpheus8, Radiesse, Sculptra
+- Skinbooster, Ultherapy, PRP
+
+Gib eine strukturierte Antwort auf Deutsch mit:
+1. Hautanalyse (2-3 Sätze)
+2. Empfohlene Behandlungen
+3. Hinweis auf persönliche Beratung"""
         
         # Call OpenAI Vision API
         from openai import OpenAI
         client = OpenAI(api_key=API_KEY)
         
+        logger.info("Calling OpenAI Vision API")
+        
         response = client.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4o",  # Updated to newer model
             messages=[
                 {
                     "role": "user",
@@ -120,21 +115,33 @@ def analyze_skin_image(image_path):
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/jpeg;base64,{base64_image}",
-                                "detail": "high"
+                                "detail": "low"  # Changed to low for faster processing
                             }
                         }
                     ]
                 }
             ],
-            max_tokens=1000,
-            temperature=0.1
+            max_tokens=800,
+            temperature=0.3
         )
         
-        return response.choices[0].message.content
+        result = response.choices[0].message.content
+        logger.info("OpenAI Vision API call successful")
+        return result
         
     except Exception as e:
         logger.error(f"Error analyzing image: {str(e)}")
-        return "Entschuldigung, ich konnte das Bild nicht analysieren. Bitte versuchen Sie es erneut oder kontaktieren Sie uns für eine persönliche Beratung."
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        
+        # Return more specific error message
+        if "rate_limit" in str(e).lower():
+            return "Die Bildanalyse ist momentan überlastet. Bitte versuchen Sie es in wenigen Minuten erneut."
+        elif "invalid" in str(e).lower():
+            return "Das Bildformat wird nicht unterstützt. Bitte verwenden Sie JPG, PNG oder GIF."
+        else:
+            return "Entschuldigung, ich konnte das Bild nicht analysieren. Bitte versuchen Sie es erneut oder kontaktieren Sie uns für eine persönliche Beratung."
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
