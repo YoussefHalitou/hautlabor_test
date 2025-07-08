@@ -76,32 +76,35 @@ def analyze_skin_image(image_path):
         
         logger.info(f"Image encoded successfully, size: {len(base64_image)} chars")
         
-        # Create a specialized prompt for skin analysis that bypasses medical restrictions
-        analysis_prompt = """Du bist ein Kosmetik- und Hautpflege-Experte für ein ästhetisches Zentrum. Analysiere diese Haut in Bezug auf Schönheit und ästhetische Verbesserungen.
+# Create a specialized prompt for skin analysis that bypasses medical restrictions
+        analysis_prompt = """Du bist ein Kosmetik- und Hautpflege-Experte für ein ästhetisches Zentrum. Analysiere die Haut, um Schönheit und kosmetische Verbesserungsmöglichkeiten zu betonen.
 
-Dies ist KEINE medizinische Diagnose, sondern eine kosmetische Beratung für ästhetische Behandlungen.
+Dies ist KEINE medizinische Diagnose, sondern eine kosmetische Betrachtung für ästhetische Behandlungen.
 
-Beschreibe was du siehst (allgemein):
-- Hautstruktur und -qualität
-- Sichtbare Zeichen des Alterns
-- Ästhetische Aspekte, die verbessert werden könnten
+Betrachte:
+- Hautstruktur, allgemeine Gleichmäßigkeit und Erscheinung
+- Übliche kosmetische Anliegen (z.B. Textur, Ton, Poren)
+- Auswirkungen des Alterns
 
-Empfehle passende KOSMETISCHE Behandlungen:
-• Faltenrelaxan (Botox) - für Gesichtsausdrücke
-• Hyaluronsäure-Filler - für Volumen und Glätte
-• HydraFacial - für Hauterfrischung
-• LaseMD - für Hauttextur
-• Lumecca IPL - für Hautton
-• Morpheus8 - für Hautstraffung
-• Skinbooster - für Hautfeuchtigkeit
-• Chemical Peels - für Hauterneuerung
+Empfehle passende KOSMETISCHE Behandlungen für:
+• Verbesserung der Hautstruktur und des Tons
+• Minimierung von Hautunreinheiten und Förderung der Klarheit
+• Verjüngung der Haut und Förderung der Elastizität
+
+Verwende bei deinen Empfehlungen jeweils kosmetische Optionen wie:
+- Faltenrelaxan (Botox)
+- Hyaluronsäure-Filler
+- HydraFacial
+- Chemical Peels
+- Lumecca IPL
+- Morpheus8
 
 Format (auf Deutsch):
-🔍 HAUTBEURTEILUNG: [2-3 Sätze über das, was sichtbar ist]
-💫 EMPFOHLENE BEHANDLUNGEN: [2-3 kosmetische Optionen mit kurzer Begründung]
-📞 BERATUNG: "Für eine persönliche Beratung und genaue Behandlungsplanung vereinbaren Sie einen Termin unter +49 (0) 157 834 488 90."
+🔍 HAUTBEURTEILUNG: [2-3 Sätze über allgemeine Ansichten]
+💡 KOSMETISCHE EMPFEHLUNGEN: [2-3 allgemeine kosmetische Optionen]
+📞 BERATUNG: "Für eine persönliche, individuelle Beratung vereinbaren Sie bitte einen Termin unter +49 (0) 157 834 488 90."
 
-Wichtig: Antworte als Kosmetik-Experte, nicht als Arzt. Fokus auf Schönheit und ästhetische Verbesserungen."""
+Wichtig: Diskutiere nur kosmetische Verbesserungen."""
         
         # Call OpenAI Vision API
         from openai import OpenAI
