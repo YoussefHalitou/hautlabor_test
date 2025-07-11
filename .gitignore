@@ -49,3 +49,4 @@ uploads/
 *.gif
 *.bmp
 *.webp
+.env

@@ -255,11 +255,14 @@ Antwort:"""
             question (str): User's question
             
         Returns:
-            str: Chatbot's answer to the question
+            dict: Dictionary with 'answer' and 'sources' keys
         """
         if not question or not isinstance(question, str):
             self.logger.warning(f"Invalid question: {question}")
-            return "Bitte stellen Sie eine Frage."
+            return {
+                "answer": "Bitte stellen Sie eine Frage.",
+                "sources": []
+            }
             
         self.logger.info(f"Processing question: {question[:50]}...")
         
@@ -278,8 +281,8 @@ Antwort:"""
             print(f"\n🤖 Antwort: {answer}")
             self.logger.info(f"Generated answer: {answer[:50]}...")
 
+            source_info = []
             if sources:
-                source_info = []
                 print(f"\n📚 Quellen:")
                 for i, doc in enumerate(sources[:2], 1):  # Show top 2 sources
                     source = doc.metadata.get('source', 'Unbekannt')
@@ -287,13 +290,19 @@ Antwort:"""
                     source_info.append(source)
                 self.logger.info(f"Sources used: {source_info}")
 
-            return answer
+            return {
+                "answer": answer,
+                "sources": source_info
+            }
 
         except Exception as e:
             self.logger.error(f"Error generating response: {str(e)}", exc_info=True)
             error_msg = f"Entschuldigung, es gab einen Fehler: {str(e)}"
             print(f"❌ {error_msg}")
-            return error_msg
+            return {
+                "answer": error_msg,
+                "sources": []
+            }
 
     def reset_memory(self):
         """Reset conversation memory"""

@@ -215,6 +215,33 @@
     .image-message.bot-message {
         align-items: flex-start;
     }
+    
+    .sources {
+        font-size: 12px;
+        color: #666;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #eee;
+    }
+    
+    .sources-title {
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+    
+    .source-link {
+        display: block;
+        color: var(--chat-primary-color);
+        text-decoration: none;
+        margin-bottom: 2px;
+        font-size: 11px;
+        opacity: 0.8;
+    }
+    
+    .source-link:hover {
+        opacity: 1;
+        text-decoration: underline;
+    }
     `;
     document.head.appendChild(style);
 
@@ -328,8 +355,8 @@
                 // Remove typing indicator
                 chatBody.removeChild(typingIndicator);
                 
-                // Add bot response
-                addMessage(data.message, 'bot');
+                // Add bot response with sources
+                addMessage(data.message, 'bot', data.sources);
                 
             } catch (error) {
                 // Remove typing indicator
@@ -342,12 +369,34 @@
         }
         
         // Add message to chat
-        function addMessage(text, sender) {
+        function addMessage(text, sender, sources = []) {
             const messageDiv = document.createElement('div');
             
             messageDiv.classList.add('message');
             messageDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
             messageDiv.textContent = text;
+            
+            // Add sources if available (only for bot messages)
+            if (sender === 'bot' && sources && sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.classList.add('sources');
+                
+                const sourcesTitle = document.createElement('div');
+                sourcesTitle.classList.add('sources-title');
+                sourcesTitle.textContent = '📚 Quellen:';
+                sourcesDiv.appendChild(sourcesTitle);
+                
+                sources.forEach((source, index) => {
+                    const sourceLink = document.createElement('a');
+                    sourceLink.classList.add('source-link');
+                    sourceLink.href = source.startsWith('http') ? source : '#';
+                    sourceLink.target = '_blank';
+                    sourceLink.textContent = `${index + 1}. ${source}`;
+                    sourcesDiv.appendChild(sourceLink);
+                });
+                
+                messageDiv.appendChild(sourcesDiv);
+            }
             
             chatBody.appendChild(messageDiv);
             
