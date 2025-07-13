@@ -37,16 +37,3 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
-
-# Environment variables
-.env
-
-# Uploads directory
-uploads/
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.webp
-.env

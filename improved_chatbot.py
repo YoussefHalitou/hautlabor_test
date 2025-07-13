@@ -194,15 +194,9 @@ class ImprovedChatbot:
     def create_chain(self):
         """Create conversational chain with memory"""
 
-        # Load system prompt from external file
-        try:
-            with open('system_prompt.txt', 'r', encoding='utf-8') as f:
-                prompt_template = f.read().strip()
-            self.logger.info("System prompt loaded from system_prompt.txt")
-        except FileNotFoundError:
-            self.logger.warning("system_prompt.txt not found, using default prompt")
-            # Fallback to default prompt
-            prompt_template = """Du bist der AI-Assistent von Dr. med. Lara Pfahl für das Hautlabor Oldenburg.
+        # Improved prompt template
+        custom_prompt = PromptTemplate(
+            template="""Du bist der AI-Assistent von Dr. med. Lara Pfahl für das Hautlabor Oldenburg.
 
 Verwende den folgenden Kontext und die Gesprächshistorie, um die Frage zu beantworten:
 
@@ -219,14 +213,7 @@ Anweisungen:
 - Sei freundlich und professionell
 - Halte Antworten fokussiert (max. 3-4 Sätze)
 
-Antwort:"""
-        except Exception as e:
-            self.logger.error(f"Error loading system prompt: {str(e)}")
-            raise
-
-        # Create prompt template
-        custom_prompt = PromptTemplate(
-            template=prompt_template,
+Antwort:""",
             input_variables=["context", "chat_history", "question"]
         )
 
@@ -255,14 +242,11 @@ Antwort:"""
             question (str): User's question
             
         Returns:
-            dict: Dictionary with 'answer' and 'sources' keys
+            str: Chatbot's answer to the question
         """
         if not question or not isinstance(question, str):
             self.logger.warning(f"Invalid question: {question}")
-            return {
-                "answer": "Bitte stellen Sie eine Frage.",
-                "sources": []
-            }
+            return "Bitte stellen Sie eine Frage."
             
         self.logger.info(f"Processing question: {question[:50]}...")
         
@@ -281,8 +265,8 @@ Antwort:"""
             print(f"\n🤖 Antwort: {answer}")
             self.logger.info(f"Generated answer: {answer[:50]}...")
 
-            source_info = []
             if sources:
+                source_info = []
                 print(f"\n📚 Quellen:")
                 for i, doc in enumerate(sources[:2], 1):  # Show top 2 sources
                     source = doc.metadata.get('source', 'Unbekannt')
@@ -290,19 +274,13 @@ Antwort:"""
                     source_info.append(source)
                 self.logger.info(f"Sources used: {source_info}")
 
-            return {
-                "answer": answer,
-                "sources": source_info
-            }
+            return answer
 
         except Exception as e:
             self.logger.error(f"Error generating response: {str(e)}", exc_info=True)
             error_msg = f"Entschuldigung, es gab einen Fehler: {str(e)}"
             print(f"❌ {error_msg}")
-            return {
-                "answer": error_msg,
-                "sources": []
-            }
+            return error_msg
 
     def reset_memory(self):
         """Reset conversation memory"""
